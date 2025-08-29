@@ -5,9 +5,6 @@ import time
 
 st.set_page_config(page_title="🧠 Memory Match", page_icon="🧩", layout="centered")
 
-# -----------------------
-# Game Config & Helpers
-# -----------------------
 EMOJIS = [
     "🍎","🍌","🍇","🍒","🍉","🍍","🥝","🍑",
     "🍔","🍕","🌮","🍟","🍩","🍪","🍰","🧁",
@@ -42,7 +39,7 @@ def reset_game(rows: int, cols: int, seed: int | None = None):
     st.session_state.total = rows * cols
     st.session_state.deck = new_deck(rows, cols, seed)
     st.session_state.matched = set()
-    st.session_state.flipped = []             # indices currently face-up but not yet confirmed
+    st.session_state.flipped = []            
     st.session_state.pending_mismatch = False # when two flipped are not a match; wait for user to continue
     st.session_state.moves = 0
     st.session_state.seed = seed if seed is not None else random.randint(1, 10_000_000)
@@ -60,9 +57,8 @@ def elapsed_seconds():
         return int(st.session_state.end_time - st.session_state.start_time)
     return int(time.time() - st.session_state.start_time)
 
-# -----------------------
+
 # UI: Sidebar Controls
-# -----------------------
 st.title("🧠 Memory Match (Flip & Find Pairs)")
 st.caption("Find all pairs with as few moves as possible!")
 
@@ -70,19 +66,17 @@ with st.sidebar:
     st.header("🎛 Game Settings")
     size_label = st.selectbox("Grid size", list(GRID_PRESETS.keys()))
     rows, cols = GRID_PRESETS[size_label]
-    # Seed helps reproducible shuffles; leave blank for random each time
+    # leave blank for random each time
     user_seed = st.text_input("Shuffle seed (optional)", value="")
     seed_val = int(user_seed) if user_seed.strip().isdigit() else None
 
     if st.button("🆕 New Game"):
         reset_game(rows, cols, seed=seed_val)
+        st.rerun()  #  restarts immediately
 
-# -----------------------
 # Main Game Area
-# -----------------------
 ensure_state_initialized()
 
-# If user changed preset via sidebar and hasn't pressed New Game yet, offer quick apply.
 curr_rows, curr_cols = st.session_state.get("rows", rows), st.session_state.get("cols", cols)
 if (rows, cols) != (curr_rows, curr_cols):
     st.info("Press *New Game* in the sidebar to apply the new grid size.")
@@ -126,15 +120,17 @@ def on_card_click(i: int):
         a, b = st.session_state.flipped
         st.session_state.moves += 1
         if st.session_state.deck[a] == st.session_state.deck[b]:
-            # Match!
+            # Match
             st.session_state.matched.update([a, b])
             st.session_state.flipped = []
             if all_matched(st.session_state.matched, st.session_state.total):
                 st.session_state.game_over = True
                 st.session_state.end_time = time.time()
         else:
-            # Not a match: freeze board until user acknowledges
+            # Not a match; freeze board until user acknowledges
             st.session_state.pending_mismatch = True
+
+    st.rerun()   #forces refresh immediately
 
 # Grid
 container = st.container()
@@ -151,6 +147,7 @@ if st.session_state.pending_mismatch:
     if st.button("🔁 Continue"):
         st.session_state.flipped = []
         st.session_state.pending_mismatch = False
+        st.rerun()  # updates instantly
 
 # Win banner
 if st.session_state.game_over:
